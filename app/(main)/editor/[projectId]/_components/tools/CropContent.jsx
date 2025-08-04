@@ -11,9 +11,12 @@ import {
   RectangleVertical,
   Smartphone,
   Maximize,
+  RotateCcw,
+  RotateCw,
 } from "lucide-react";
 import { useCanvas } from "@/context/context";
 import { FabricImage, Rect } from "fabric";
+import { useCanvasUndoRedo } from "@/hooks/use-undoredo-hook";
 
 const ASPECT_RATIOS = [
   { label: "Freeform", value: null, icon: Maximize },
@@ -30,6 +33,11 @@ const ASPECT_RATIOS = [
 
 export function CropContent() {
   const { canvasEditor, activeTool } = useCanvas();
+  const {
+    saveUndoState,
+    TRACKABLE_ACTIONS,
+    handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory
+  } = useCanvasUndoRedo(canvasEditor);
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [isCropMode, setIsCropMode] = useState(false);
@@ -220,6 +228,13 @@ export function CropContent() {
     console.log("crop : before : ", canvasEditor);
 
     try {
+      // ✅ Save current canvas state before resizing
+      saveUndoState(TRACKABLE_ACTIONS.IMAGE_CROPPED, {
+        oldWidth: canvasEditor.getWidth(),
+        oldHeight: canvasEditor.getHeight(),
+      });
+
+
       // Get crop rectangle bounds
       const cropBounds = cropRect.getBoundingRect();
       const imageBounds = selectedImage.getBoundingRect();
@@ -275,13 +290,14 @@ export function CropContent() {
       setOriginalProps(null);
 
       exitCropMode();
-    console.log("crop : after : ", canvasEditor);
+      console.log("crop : after : ", canvasEditor);
 
 
     } catch (error) {
       console.error("Error applying crop:", error);
       exitCropMode();
     }
+    console.log("crop : after : ", canvasEditor);
   };
 
   // Cancel crop and reset
@@ -309,73 +325,108 @@ export function CropContent() {
   return (
     <div className="space-y-6">
       {/* Crop Mode Status */}
-      {isCropMode && (
-        <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
-          <p className="text-cyan-400 text-sm font-medium">
-            ✂️ Crop Mode Active
-          </p>
-          <p className="text-cyan-300/80 text-xs mt-1">
-            Adjust the blue rectangle to set crop area
-          </p>
-        </div>
-      )}
+
+      {
+        true && (
+          < div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
+              onClick={handleUndoClick}
+            // disabled={!canUndo || isUndoRedoOperation}
+            // title={`Undo (${undoStack.length - 1} actions available)`}
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
+              onClick={handleRedoClick}
+            // disabled={!canRedo || isUndoRedoOperation}
+
+            >
+              <RotateCw className="h-4 w-4" />
+            </Button>
+          </div>
+        )
+      }
+      {
+        isCropMode && (
+          <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">
+            <p className="text-cyan-400 text-sm font-medium">
+              ✂️ Crop Mode Active
+            </p>
+            <p className="text-cyan-300/80 text-xs mt-1">
+              Adjust the blue rectangle to set crop area
+            </p>
+          </div>
+        )
+      }
 
       {/* Start Crop Button */}
-      {!isCropMode && activeImage && (
-        <Button
-          onClick={() => initializeCropMode(activeImage)}
-          className="w-full"
-          variant="gradient"
-        >
-          <Crop className="h-4 w-4 mr-2" />
-          Start Cropping
-        </Button>
-      )}
+      {
+        !isCropMode && activeImage && (
+          <Button
+            onClick={() => initializeCropMode(activeImage)}
+            className="w-full"
+            variant="gradient"
+          >
+            <Crop className="h-4 w-4 mr-2" />
+            Start Cropping
+          </Button>
+        )
+      }
 
       {/* Aspect Ratio Selection - Only show in crop mode */}
-      {isCropMode && (
-        <div>
-          <h3 className="text-sm font-medium text-white mb-3">
-            Crop Aspect Ratios
-          </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {ASPECT_RATIOS.map((ratio) => {
-              const IconComponent = ratio.icon;
-              return (
-                <button
-                  key={ratio.label}
-                  onClick={() => applyAspectRatio(ratio.value)}
-                  className={`text-center p-3 border rounded-lg transition-colors cursor-pointer ${selectedRatio === ratio.value
-                    ? "border-cyan-400 bg-cyan-400/10"
-                    : "border-white/20 hover:border-white/40 hover:bg-white/5"
-                    }`}
-                >
-                  <IconComponent className="h-6 w-6 mx-auto mb-2 text-white" />
-                  <div className="text-xs text-white">{ratio.label}</div>
-                  {ratio.ratio && (
-                    <div className="text-xs text-white/70">{ratio.ratio}</div>
-                  )}
-                </button>
-              );
-            })}
+      {
+        isCropMode && (
+          <div>
+            <h3 className="text-sm font-medium text-white mb-3">
+              Crop Aspect Ratios
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              {ASPECT_RATIOS.map((ratio) => {
+                const IconComponent = ratio.icon;
+                return (
+                  <button
+                    key={ratio.label}
+                    onClick={() => applyAspectRatio(ratio.value)}
+                    className={`text-center p-3 border rounded-lg transition-colors cursor-pointer ${selectedRatio === ratio.value
+                      ? "border-cyan-400 bg-cyan-400/10"
+                      : "border-white/20 hover:border-white/40 hover:bg-white/5"
+                      }`}
+                  >
+                    <IconComponent className="h-6 w-6 mx-auto mb-2 text-white" />
+                    <div className="text-xs text-white">{ratio.label}</div>
+                    {ratio.ratio && (
+                      <div className="text-xs text-white/70">{ratio.ratio}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Crop Actions - Only show in crop mode */}
-      {isCropMode && (
-        <div className="space-y-3 pt-4 border-t border-white/10">
-          <Button onClick={applyCrop} className="w-full" variant="gradient">
-            <CheckCheck className="h-4 w-4 mr-2" />
-            Apply Crop
-          </Button>
+      {
+        isCropMode && (
+          <div className="space-y-3 pt-4 border-t border-white/10">
+            <Button onClick={applyCrop} className="w-full" variant="gradient">
+              <CheckCheck className="h-4 w-4 mr-2" />
+              Apply Crop
+            </Button>
 
-          <Button onClick={cancelCrop} variant="outline" className="w-full">
-            <X className="h-4 w-4 mr-2" />
-            Cancel
-          </Button>
-        </div>
-      )}
+            <Button onClick={cancelCrop} variant="outline" className="w-full">
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+          </div>
+        )
+      }
 
       {/* Instructions */}
       <div className="bg-slate-700/30 rounded-lg p-3">
@@ -391,7 +442,9 @@ export function CropContent() {
           4. Click "Apply Crop" to finalize
         </p>
       </div>
-    </div>
+
+
+    </div >
   );
 }
 

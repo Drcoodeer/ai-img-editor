@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Expand, Lock, Unlock, Monitor } from "lucide-react";
+import { Expand, Lock, Unlock, Monitor, RotateCcw, RotateCw } from "lucide-react";
 import { useCanvas } from "@/context/context";
 import { useConvexMutation } from "@/hooks/use-convex-query";
 import { api } from "@/convex/_generated/api";
@@ -26,14 +26,9 @@ const ResizeControls = ({ project }) => {
   const [lockAspectRatio, setLockAspectRatio] = useState(true);
   const [selectedPreset, setSelectedPreset] = useState(null);
 
-
+  const { handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory } = useCanvasUndoRedo(canvasEditor)
   const {
-    handleUndo,
-    handleRedo,
     saveUndoState,
-    clearHistory,
-    getHistoryInfo,
-    isUndoRedoOperation,
     TRACKABLE_ACTIONS
   } = useCanvasUndoRedo(canvasEditor);
 
@@ -128,7 +123,7 @@ const ResizeControls = ({ project }) => {
     try {
 
       // ✅ Save current canvas state before resizing
-      saveUndoState(TRACKABLE_ACTIONS.CANVAS_RESIZED, {
+      saveUndoState(TRACKABLE_ACTIONS.IMAGE_CROPPED, {
         oldWidth: canvasEditor.getWidth(),
         oldHeight: canvasEditor.getHeight(),
         newWidth,
@@ -181,6 +176,33 @@ const ResizeControls = ({ project }) => {
 
   return (
     <div className="space-y-6">
+
+      <div className="flex items-center gap-4">
+        {/* Undo/Redo */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
+            onClick={handleUndoClick}
+          // disabled={!canUndo || isUndoRedoOperation}
+          // title={`Undo (${undoStack.length - 1} actions available)`}
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
+            onClick={handleRedoClick}
+          // disabled={!canRedo || isUndoRedoOperation}
+
+          >
+            <RotateCw className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* Current Size Display */}
       <div className="bg-slate-700/30 rounded-lg p-3">
         <h4 className="text-sm font-medium text-white mb-2">Current Size</h4>

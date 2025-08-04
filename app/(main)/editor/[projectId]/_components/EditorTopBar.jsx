@@ -116,24 +116,16 @@ export default function EditorTopBar({ project }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [restrictedTool, setRestrictedTool] = useState(null);
 
-
-
   const { activeTool, onToolChange, canvasEditor } = useCanvas();
   const { hasAccess, canExport, isFree } = usePlanAccess();
 
-  // Undo/Redo state
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
-  const [isUndoRedoOperation, setIsUndoRedoOperation] = useState(false);
+  function handleUndoClick() { }
+  function handleRedoClick() { }
+  // const { handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory } = useCanvasUndoRedo(canvasEditor)
 
-  const { setUndoStack: setUndoState, handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory } = useCanvasUndoRedo(canvasEditor)
-
-  const handleclear = () => {
-    clearHistory()
-  }
-
-  // console.log("!!undoStack : ", undoStack);
-  // console.log("!!redostack : ", redoStack);
+  // const handleclear = () => {
+  //   clearHistory()
+  // }
 
 
   // Use the loading states from the hooks
@@ -141,122 +133,6 @@ export default function EditorTopBar({ project }) {
     api.projects.updateProject
   );
   const { data: user } = useConvexQuery(api.users.getCurrentUser);
-
-  // Save canvas state to undo stack
-  const saveToUndoStack = () => {
-    if (!canvasEditor || isUndoRedoOperation) return;
-
-    const canvasState = JSON.stringify(canvasEditor.toJSON());
-
-    setUndoStack((prev) => {
-      const newStack = [...prev, canvasState];
-      // Limit undo stack to 20 items to prevent memory issues
-      if (newStack.length > 2000) {
-        newStack.shift();
-      }
-      return newStack;
-    });
-
-    // Clear redo stack when new action is performed
-    setRedoStack([]);
-  };
-
-  // Setup undo/redo listeners
-  useEffect(() => {
-    if (!canvasEditor) return;
-
-    // Save initial state
-    setTimeout(() => {
-      if (canvasEditor && !isUndoRedoOperation) {
-        const initialState = JSON.stringify(canvasEditor.toJSON());
-        setUndoStack([initialState]);
-      }
-    }, 1000);
-
-    const handleCanvasModified = () => {
-      if (!isUndoRedoOperation) {
-        // Debounce state saving to avoid too many saves
-        setTimeout(() => {
-          if (!isUndoRedoOperation) {
-            saveToUndoStack();
-          }
-        }, 500);
-      }
-    };
-
-    // Listen to canvas events that should trigger state save
-    canvasEditor.on("object:modified", handleCanvasModified);
-    canvasEditor.on("object:added", handleCanvasModified);
-    canvasEditor.on("object:removed", handleCanvasModified);
-    canvasEditor.on("path:created", handleCanvasModified);
-
-    return () => {
-      canvasEditor.off("object:modified", handleCanvasModified);
-      canvasEditor.off("object:added", handleCanvasModified);
-      canvasEditor.off("object:removed", handleCanvasModified);
-      canvasEditor.off("path:created", handleCanvasModified);
-    };
-  }, [canvasEditor, isUndoRedoOperation]);
-
-  // Undo function
-  const handleUndo = async () => {
-    if (!canvasEditor || undoStack.length <= 1) return;
-
-    setIsUndoRedoOperation(true);
-
-    try {
-      // Move current state to redo stack
-      const currentState = JSON.stringify(canvasEditor.toJSON());
-      setRedoStack((prev) => [...prev, currentState]);
-
-      // Remove last state from undo stack and apply the previous one
-      const newUndoStack = [...undoStack];
-      newUndoStack.pop(); // Remove current state
-      const previousState = newUndoStack[newUndoStack.length - 1];
-
-      if (previousState) {
-        await canvasEditor.loadFromJSON(JSON.parse(previousState));
-        canvasEditor.requestRenderAll();
-        setUndoStack(newUndoStack);
-        toast.success("Undid last action");
-      }
-    } catch (error) {
-      console.error("Error during undo:", error);
-      toast.error("Failed to undo action");
-    } finally {
-      setTimeout(() => setIsUndoRedoOperation(false), 100);
-    }
-  };
-
-  // Redo function
-  const handleRedo = async () => {
-    if (!canvasEditor || redoStack.length === 0) return;
-
-    setIsUndoRedoOperation(true);
-
-    try {
-      // Get the latest state from redo stack
-      const newRedoStack = [...redoStack];
-      const nextState = newRedoStack.pop();
-
-      if (nextState) {
-        // Save current state to undo stack
-        const currentState = JSON.stringify(canvasEditor.toJSON());
-        setUndoStack((prev) => [...prev, currentState]);
-
-        // Apply the redo state
-        await canvasEditor.loadFromJSON(JSON.parse(nextState));
-        canvasEditor.requestRenderAll();
-        setRedoStack(newRedoStack);
-        toast.success("Redid last action");
-      }
-    } catch (error) {
-      console.error("Error during redo:", error);
-      toast.error("Failed to redo action");
-    } finally {
-      setTimeout(() => setIsUndoRedoOperation(false), 100);
-    }
-  };
 
   const handleBackToDashboard = () => {
     router.push("/dashboard");
@@ -425,7 +301,6 @@ export default function EditorTopBar({ project }) {
       toast.error("No original image found to reset to");
       return;
     }
-    saveToUndoStack();
 
     try {
       canvasEditor.clear();
@@ -498,10 +373,6 @@ export default function EditorTopBar({ project }) {
     }
   };
 
-
-  // Check if undo/redo is available
-  const canUndo = undoStack.length > 1;
-  const canRedo = redoStack.length > 0;
 
   return (
     <>
@@ -684,7 +555,7 @@ export default function EditorTopBar({ project }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
+                // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
                 onClick={handleUndoClick}
               // disabled={!canUndo || isUndoRedoOperation}
               // title={`Undo (${undoStack.length - 1} actions available)`}
@@ -694,10 +565,10 @@ export default function EditorTopBar({ project }) {
               <Button
                 variant="ghost"
                 size="sm"
-                className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
-                onClick={handleRedo}
-                disabled={!canRedo || isUndoRedoOperation}
-                title={`Redo (${redoStack.length} actions available)`}
+                // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
+                onClick={handleRedoClick}
+              // disabled={!canRedo || isUndoRedoOperation}
+
               >
                 <RotateCw className="h-4 w-4" />
               </Button>
