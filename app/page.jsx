@@ -21,6 +21,8 @@ export default function LandingPage() {
 
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+  const projectName = process.env.NEXT_PUBLIC_PROJECT_NAME;
+
   return (
     <>
       <div className={`min-h-screen ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'} relative overflow-hidden`}>
@@ -38,7 +40,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 relative">
               <Image
                 src='/images/logo-main.png'
-                alt="PixelForge AI Logo"
+                alt={projectName}
                 width={32}
                 height={32}
                 className="w-full h-full object-contain"
@@ -48,7 +50,7 @@ export default function LandingPage() {
 
             {/* Text with gradient - kept as is or can be modified */}
             <span className="text-2xl font-bold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              PixelForge AI
+              {projectName}
             </span>
           </div>
 
@@ -107,7 +109,7 @@ export default function LandingPage() {
         </motion.header>
 
         {/* Hero Section */}
-        <section className="relative z-10 text-center py-20 px-6">
+        <section className="relative  text-center py-20 px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -164,7 +166,7 @@ export default function LandingPage() {
         </section>
 
         {/* Features Grid */}
-        <section id="features" className="relative z-10 py-20 px-6">
+        <section id="features" className="relative  py-20 px-6">
           <motion.div
             className="max-w-6xl mx-auto"
             initial={{ opacity: 0 }}

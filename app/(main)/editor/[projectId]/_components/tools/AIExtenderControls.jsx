@@ -8,6 +8,7 @@ import { useCanvas } from "@/context/context";
 import { FabricImage } from "fabric";
 import { useConvexMutation } from "@/hooks/use-convex-query";
 import { api } from "@/convex/_generated/api";
+import { useCanvasUndoRedo } from "@/context/UndoRedoContext";
 
 const DIRECTIONS = [
   { key: "top", label: "Top", icon: ArrowUp },
@@ -32,6 +33,9 @@ const AIExtenderControls = ({ project }) => {
     api.projects.updateProject
   );
 
+  const { saveToUndoStack, TRACKABLE_ACTIONS, } = useCanvasUndoRedo()
+
+
   const selectDirection = (direction) => {
     // Toggle selection - if same direction is clicked, deselect it
     setSelectedDirection((prev) => (prev === direction ? null : direction));
@@ -47,7 +51,7 @@ const AIExtenderControls = ({ project }) => {
     const imageSrc = getImageSrc(getMainImage());
     return (
       imageSrc?.includes("e-bgremove") ||
-      imageSrc?.includes("e-removedotbg") 
+      imageSrc?.includes("e-removedotbg")
     );
   };
 
@@ -91,6 +95,7 @@ const AIExtenderControls = ({ project }) => {
   const applyExtension = async () => {
     const mainImage = getMainImage();
     if (!mainImage || !selectedDirection) return;
+    saveToUndoStack(TRACKABLE_ACTIONS.IMAGE_REPLACED, {})
 
     setProcessingMessage("Extending image with AI...");
 

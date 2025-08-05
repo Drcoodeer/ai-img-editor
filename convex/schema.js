@@ -7,10 +7,15 @@ export default defineSchema({
         name: v.string(),
         email: v.string(),
         tokenIdentifier: v.string(), // Clerk user ID for auth
+        clerkUserId: v.string(),
         imageUrl: v.optional(v.string()), // Profile picture
 
         // Subscription plan (managed by Clerk billing)
-        plan: v.union(v.literal("free"), v.literal("pro")),
+        plan: v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")),
+        subscriptionId: v.optional(v.string()), // Clerk subscription ID
+        subscriptionStatus: v.optional(v.string()), // active, canceled, etc.
+        currentPeriodEnd: v.optional(v.number()), // Unix timestamp
+
 
         // Usage tracking for plan limits
         projectsUsed: v.number(), // Current project count
@@ -21,6 +26,7 @@ export default defineSchema({
         lastActiveAt: v.number(),
     })
         .index("by_token", ["tokenIdentifier"]) // Primary auth lookup
+        .index("by_clerk_id", ["clerkUserId"])        
         .index("by_email", ["email"]) // Email lookups
         .searchIndex("search_name", { searchField: "name" }) // User search
         .searchIndex("search_email", { searchField: "email" }),

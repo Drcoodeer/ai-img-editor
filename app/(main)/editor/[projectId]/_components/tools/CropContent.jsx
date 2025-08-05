@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useCanvas } from "@/context/context";
 import { FabricImage, Rect } from "fabric";
-import { useCanvasUndoRedo } from "@/hooks/use-undoredo-hook";
+import { useCanvasUndoRedo } from "@/context/UndoRedoContext";
 
 const ASPECT_RATIOS = [
   { label: "Freeform", value: null, icon: Maximize },
@@ -33,17 +33,13 @@ const ASPECT_RATIOS = [
 
 export function CropContent() {
   const { canvasEditor, activeTool } = useCanvas();
-  const {
-    saveUndoState,
-    TRACKABLE_ACTIONS,
-    handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory
-  } = useCanvasUndoRedo(canvasEditor);
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [isCropMode, setIsCropMode] = useState(false);
   const [selectedRatio, setSelectedRatio] = useState(null);
   const [cropRect, setCropRect] = useState(null);
   const [originalProps, setOriginalProps] = useState(null);
+  const { saveToUndoStack, TRACKABLE_ACTIONS, } = useCanvasUndoRedo()
 
   // Get the currently selected or main image
   const getActiveImage = () => {
@@ -225,16 +221,10 @@ export function CropContent() {
   const applyCrop = async () => {
     if (!selectedImage || !cropRect) return;
 
-    console.log("crop : before : ", canvasEditor);
-
     try {
-      // ✅ Save current canvas state before resizing
-      saveUndoState(TRACKABLE_ACTIONS.IMAGE_CROPPED, {
-        oldWidth: canvasEditor.getWidth(),
-        oldHeight: canvasEditor.getHeight(),
-      });
 
-
+      saveToUndoStack(TRACKABLE_ACTIONS.IMAGE_CROPPED, {})
+     
       // Get crop rectangle bounds
       const cropBounds = cropRect.getBoundingRect();
       const imageBounds = selectedImage.getBoundingRect();
@@ -290,14 +280,12 @@ export function CropContent() {
       setOriginalProps(null);
 
       exitCropMode();
-      console.log("crop : after : ", canvasEditor);
-
 
     } catch (error) {
       console.error("Error applying crop:", error);
       exitCropMode();
     }
-    console.log("crop : after : ", canvasEditor);
+
   };
 
   // Cancel crop and reset
@@ -326,32 +314,6 @@ export function CropContent() {
     <div className="space-y-6">
       {/* Crop Mode Status */}
 
-      {
-        true && (
-          < div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
-              onClick={handleUndoClick}
-            // disabled={!canUndo || isUndoRedoOperation}
-            // title={`Undo (${undoStack.length - 1} actions available)`}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
-              onClick={handleRedoClick}
-            // disabled={!canRedo || isUndoRedoOperation}
-
-            >
-              <RotateCw className="h-4 w-4" />
-            </Button>
-          </div>
-        )
-      }
       {
         isCropMode && (
           <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3">

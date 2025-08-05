@@ -1,10 +1,12 @@
+import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-export const store = mutation({
+export const storeUser = mutation({
     args: {},
     handler: async (ctx) => {
         const identity = await ctx.auth.getUserIdentity();
-        
+        console.log("identity : ", identity);
+
         if (!identity) {
             throw new Error("Called storeUser without authentication present");
         }
@@ -28,6 +30,7 @@ export const store = mutation({
         return await ctx.db.insert("users", {
             name: identity.name ?? "Anonymous",
             tokenIdentifier: identity.tokenIdentifier,
+            clerkUserId: identity.subject,
             email: identity.email,
             imageUrl: identity.pictureUrl,
             plan: "free",
@@ -58,5 +61,38 @@ export const getCurrentUser = query({
         }
 
         return user;
+    },
+});
+
+export const updateSubscription = mutation({
+    args: {
+        clerkUserId: v.string(),
+        subscriptionId: v.string(),
+        plan: v.union(v.literal("free"), v.literal("pro"), v.literal("enterprise")),
+        status: v.string(),
+        currentPeriodEnd: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        // Find user by Clerk ID
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+            .unique();
+
+        if (!user) {
+            throw new Error(`User not found: ${args.clerkUserId}`);
+        }
+        console.log("USER : ", user);
+
+
+        // Update subscription info
+        await ctx.db.patch(user._id, {
+            plan: args.plan,
+            subscriptionId: args.subscriptionId,
+            subscriptionStatus: args.status,
+            currentPeriodEnd: args.currentPeriodEnd,
+        });
+
+        console.log(`✅ Updated subscription for user ${args.clerkUserId}: ${args.plan}`);
     },
 });

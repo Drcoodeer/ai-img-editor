@@ -1,7 +1,7 @@
 'use client'
 import { useCanvas } from "@/context/context";
 import { api } from "@/convex/_generated/api";
-import { useConvexQuery } from "@/hooks/use-convex-query";
+import { useConvexMutation, useConvexQuery } from "@/hooks/use-convex-query";
 import { useScroll, useTransform } from "framer-motion";
 import { Monitor } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -9,15 +9,29 @@ import { BarLoader, RingLoader } from "react-spinners";
 import CanvasEditor from "./_components/Canvas";
 import EditorTopBar from "./_components/EditorTopBar";
 import EditorSidebar from "./_components/EditorSidebar";
+import { useCallback, useEffect } from "react";
 
 const Editor = () => {
     const params = useParams();
     const projectId = params?.projectId;
-
     const { data: project, isLoading, error } = useConvexQuery(api.projects.getProject, { projectId })
-    const { processingMessage } = useCanvas()
+    const { processingMessage, canvasEditor } = useCanvas()
     const { scrollYProgress } = useScroll();
     const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
+    const { mutate: updateProject } = useConvexMutation(
+        api.projects.updateProject
+    );
+
+    useEffect(() => {
+        return async () => {
+            if (!canvasEditor || !project) return;
+
+            await updateProject({
+                projectId: project._id,
+                canvasState: canvasEditor.toJSON(),
+            });
+        };
+    }, []);
 
     if (isLoading) {
         return (

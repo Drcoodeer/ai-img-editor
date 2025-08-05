@@ -13,6 +13,7 @@ import Image from "next/image";
 
 const Dashboard = () => {
     const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+    const projectName = process.env.NEXT_PUBLIC_PROJECT_NAME;
 
     // Get user's projects
     const { data: projects, isLoading } = useConvexQuery(
@@ -33,7 +34,7 @@ const Dashboard = () => {
                         <div className="w-8 h-8 relative">
                             <Image
                                 src='/images/logo-main.png'
-                                alt="PixelForge AI Logo"
+                                alt={projectName}
                                 width={32}
                                 height={32}
                                 className="w-full h-full object-contain"

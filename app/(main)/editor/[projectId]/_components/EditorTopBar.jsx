@@ -38,7 +38,7 @@ import { useConvexMutation, useConvexQuery } from "@/hooks/use-convex-query";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import UPNG from 'upng-js';
-import { useCanvasUndoRedo } from "@/hooks/use-undoredo-hook";
+import { useCanvasUndoRedo } from "@/context/UndoRedoContext";
 
 const TOOLS = [
   {
@@ -118,14 +118,11 @@ export default function EditorTopBar({ project }) {
 
   const { activeTool, onToolChange, canvasEditor } = useCanvas();
   const { hasAccess, canExport, isFree } = usePlanAccess();
+  const { handleUndo, handleRedo, getHistoryInfo } = useCanvasUndoRedo();
+  const { canUndo, canRedo } = getHistoryInfo();
+  // const canUndo = true
+  // const canRedo = true
 
-  function handleUndoClick() { }
-  function handleRedoClick() { }
-  // const { handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory } = useCanvasUndoRedo(canvasEditor)
-
-  // const handleclear = () => {
-  //   clearHistory()
-  // }
 
 
   // Use the loading states from the hooks
@@ -392,15 +389,7 @@ export default function EditorTopBar({ project }) {
             </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleclear()}
-            className="text-white hover:text-gray-300"
-          >
-            <Cookie className="h-4 w-4 mr-2" />
-            Clear
-          </Button>
+     
 
           <h1 className="font-extrabold capitalize">{project.title}</h1>
 
@@ -555,9 +544,9 @@ export default function EditorTopBar({ project }) {
               <Button
                 variant="ghost"
                 size="sm"
-                // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
-                onClick={handleUndoClick}
-              // disabled={!canUndo || isUndoRedoOperation}
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className={`p-2 rounded ${!canUndo ? 'opacity-50' : 'hover:bg-slate-700'}`}
               // title={`Undo (${undoStack.length - 1} actions available)`}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -565,10 +554,9 @@ export default function EditorTopBar({ project }) {
               <Button
                 variant="ghost"
                 size="sm"
-                // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
-                onClick={handleRedoClick}
-              // disabled={!canRedo || isUndoRedoOperation}
-
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className={`p-2 rounded ${!canRedo ? 'opacity-50' : 'hover:bg-slate-700'}`}
               >
                 <RotateCw className="h-4 w-4" />
               </Button>

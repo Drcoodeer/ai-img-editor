@@ -67,77 +67,54 @@ export const useCanvasUndoRedo = (canvasEditor) => {
         }
     }, [canvasEditor]);
 
-    const saveToUndoStack = useCallback((actionType = 'unknown', metadata = {}) => {
-        if (!canvasEditor || isUndoRedoOperation) return;
-
-        const currentState = getCleanCanvasState();
-        if (!currentState) return;
-
-        const currentHash = generateStateHash(currentState);
-
-        if (lastSavedHash === currentHash) {
-            return;
-        }
-
-        const stateWithMetadata = {
-            state: currentState,
-            timestamp: Date.now(),
-            actionType,
-            metadata,
-            hash: currentHash
-        };
-
-        setUndoStack(prev => {
-            const newStack = [...prev, stateWithMetadata];
-            if (newStack.length > MAX_UNDO_STACK_SIZE) {
-                newStack.shift();
-            }
-            return newStack;
+   const saveToUndoStack = useCallback((actionType = 'unknown', metadata = {}) => {
+    if (!canvasEditor || isUndoRedoOperation) {
+        console.log('🚫 Save to undo stack blocked:', {
+            hasCanvas: !!canvasEditor,
+            isUndoRedoOperation
         });
+        return;
+    }
 
-        setRedoStack([]);
-        setLastSavedHash(currentHash);
+    const currentState = getCleanCanvasState();
+    if (!currentState) {
+        console.warn('⚠️ No valid canvas state to save');
+        return;
+    }
 
-        console.log(`Saved undo state: ${actionType}`, metadata);
-    }, [canvasEditor, isUndoRedoOperation, getCleanCanvasState, generateStateHash, lastSavedHash]);
+    const currentHash = generateStateHash(currentState);
 
-    const saveUndoState = useCallback((actionType, metadata = {}) => {
-        if (!canvasEditor || isUndoRedoOperation) {
-            console.log('SaveUndoState blocked');
-            return;
+    if (lastSavedHash === currentHash) {
+        console.log('🔁 State unchanged, skipping save');
+        return;
+    }
+
+    const stateWithMetadata = {
+        state: currentState,
+        timestamp: Date.now(),
+        actionType,
+        metadata,
+        hash: currentHash
+    };
+
+    setUndoStack(prev => {
+        const newStack = [...prev, stateWithMetadata];
+        if (newStack.length > MAX_UNDO_STACK_SIZE) {
+            console.log('🧹 Undo stack full, removing oldest entry');
+            newStack.shift();
         }
-
-        const currentState = getCleanCanvasState();
-        if (!currentState) return;
-
-        const currentHash = generateStateHash(currentState);
-
-        if (lastSavedHash === currentHash) {
-            console.log('State unchanged, not saving');
-            return;
-        }
-
-        const stateWithMetadata = {
-            state: currentState,
-            timestamp: Date.now(),
-            actionType,
-            metadata,
-            hash: currentHash
-        };
-
-        setUndoStack(prev => {
-            const newStack = [...prev, stateWithMetadata];
-            if (newStack.length > MAX_UNDO_STACK_SIZE) {
-                newStack.shift();
-            }
-            return newStack;
+        console.log(`💾 Undo state saved: ${actionType}`, {
+            hash: currentHash,
+            stackSize: newStack.length,
+            metadata
         });
+        return newStack;
+    });
 
-        setRedoStack([]);
-        setLastSavedHash(currentHash);
+    setRedoStack([]);
+    setLastSavedHash(currentHash);
+}, [canvasEditor, isUndoRedoOperation, getCleanCanvasState, generateStateHash, lastSavedHash]);
 
-        console.log(`Manually saved undo state: ${actionType}`, metadata);
-    }, [canvasEditor, isUndoRedoOperation, getCleanCanvasState, generateStateHash, lastSavedHash]);
 
     // useEffect(() => {
     //     if (!canvasEditor || isInitialized) return;
@@ -364,6 +341,7 @@ export const useCanvasUndoRedo = (canvasEditor) => {
         saveUndoState,
         clearHistory,
         getHistoryInfo,
+        saveToUndoStack,
         isUndoRedoOperation,
         TRACKABLE_ACTIONS,
     };

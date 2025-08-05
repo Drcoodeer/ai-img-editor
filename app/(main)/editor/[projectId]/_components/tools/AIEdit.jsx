@@ -16,6 +16,7 @@ import { useCanvas } from "@/context/context";
 import { FabricImage } from "fabric";
 import { useConvexMutation } from "@/hooks/use-convex-query";
 import { api } from "@/convex/_generated/api";
+import { useCanvasUndoRedo } from "@/context/UndoRedoContext";
 
 const RETOUCH_PRESETS = [
   {
@@ -59,6 +60,9 @@ export default function AIEdit({ project }) {
     api.projects.updateProject
   );
 
+  const { saveToUndoStack, TRACKABLE_ACTIONS } = useCanvasUndoRedo()
+
+
   const getMainImage = () =>
     canvasEditor?.getObjects().find((obj) => obj.type === "image") || null;
 
@@ -89,6 +93,7 @@ export default function AIEdit({ project }) {
     );
 
     if (!mainImage || !project || !selectedPresetData) return;
+    saveToUndoStack(TRACKABLE_ACTIONS.IMAGE_REPLACED, {})
 
     setProcessingMessage(`Enhancing image with ${selectedPresetData.label}...`);
 
@@ -198,8 +203,8 @@ export default function AIEdit({ project }) {
               <div
                 key={preset.key}
                 className={`relative p-4 rounded-lg border cursor-pointer transition-all ${isSelected
-                    ? "border-cyan-400 bg-cyan-400/10"
-                    : "border-white/20 bg-slate-700/30 hover:border-white/40"
+                  ? "border-cyan-400 bg-cyan-400/10"
+                  : "border-white/20 bg-slate-700/30 hover:border-white/40"
                   }`}
                 onClick={() => setSelectedPreset(preset.key)}
               >

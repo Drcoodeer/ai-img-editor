@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 
 export default function useStoreUser() {
   const { isSignedIn, isLoaded } = useUser();
-  const storeUser = useMutation(api.users.store);
+  const storeUser = useMutation(api.users.storeUser);
 
   // This prevents re-calling on every render
   const hasStored = useRef(false);

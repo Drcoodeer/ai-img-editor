@@ -7,7 +7,7 @@ import { Expand, Lock, Unlock, Monitor, RotateCcw, RotateCw } from "lucide-react
 import { useCanvas } from "@/context/context";
 import { useConvexMutation } from "@/hooks/use-convex-query";
 import { api } from "@/convex/_generated/api";
-import { useCanvasUndoRedo } from "@/hooks/use-undoredo-hook";
+import { useCanvasUndoRedo } from "@/context/UndoRedoContext";
 
 // Common aspect ratios
 const ASPECT_RATIOS = [
@@ -25,12 +25,7 @@ const ResizeControls = ({ project }) => {
   const [newHeight, setNewHeight] = useState(project?.height || 600);
   const [lockAspectRatio, setLockAspectRatio] = useState(true);
   const [selectedPreset, setSelectedPreset] = useState(null);
-
-  const { handleRedo: handleRedoClick, handleUndo: handleUndoClick, clearHistory } = useCanvasUndoRedo(canvasEditor)
-  const {
-    saveUndoState,
-    TRACKABLE_ACTIONS
-  } = useCanvasUndoRedo(canvasEditor);
+  const { saveUndoState, TRACKABLE_ACTIONS, getCompleteCanvasState } = useCanvasUndoRedo();
 
   const {
     mutate: updateProject,
@@ -121,16 +116,35 @@ const ResizeControls = ({ project }) => {
     setProcessingMessage("Resizing canvas...");
 
     try {
+      // IMPORTANT: Capture the COMPLETE current state BEFORE making any changes
+      const oldWidth = canvasEditor.getWidth();
+      const oldHeight = canvasEditor.getHeight();
 
-      // ✅ Save current canvas state before resizing
-      saveUndoState(TRACKABLE_ACTIONS.IMAGE_CROPPED, {
-        oldWidth: canvasEditor.getWidth(),
-        oldHeight: canvasEditor.getHeight(),
+      // Get complete current state including all objects and their positions
+      const previousCompleteState = {
+        ...canvasEditor.toJSON(),
+        canvasWidth: oldWidth,
+        canvasHeight: oldHeight,
+        backgroundColor: canvasEditor.backgroundColor
+      };
+
+      // Save to undo stack BEFORE making changes
+      saveUndoState(TRACKABLE_ACTIONS.CANVAS_RESIZED, {
+        previousState: previousCompleteState, 
+        oldWidth,
+        oldHeight,
         newWidth,
-        newHeight
+        newHeight,
+        resizeType: 'manual' 
       });
 
-      // Resize the canvas
+      console.log('🔄 Canvas resize - saved previous state:', {
+        oldDimensions: `${oldWidth}x${oldHeight}`,
+        newDimensions: `${newWidth}x${newHeight}`,
+        objectCount: canvasEditor.getObjects().length
+      });
+
+      // Now perform the resize operations
       canvasEditor.setWidth(newWidth);
       canvasEditor.setHeight(newHeight);
 
@@ -149,6 +163,15 @@ const ResizeControls = ({ project }) => {
       canvasEditor.calcOffset();
       canvasEditor.requestRenderAll();
 
+      // Emit custom event for the undo/redo system to track
+      canvasEditor.fire('canvas:resized', {
+        oldWidth,
+        oldHeight,
+        newWidth,
+        newHeight,
+        viewportScale
+      });
+
       // Update project in database
       await updateProject({
         projectId: project._id,
@@ -156,8 +179,11 @@ const ResizeControls = ({ project }) => {
         height: newHeight,
         canvasState: canvasEditor.toJSON(),
       });
+
+      console.log('✅ Canvas resize completed successfully');
+
     } catch (error) {
-      console.error("Error resizing canvas:", error);
+      console.error("💥 Error resizing canvas:", error);
       alert("Failed to resize canvas. Please try again.");
     } finally {
       setProcessingMessage(null);
@@ -177,31 +203,6 @@ const ResizeControls = ({ project }) => {
   return (
     <div className="space-y-6">
 
-      <div className="flex items-center gap-4">
-        {/* Undo/Redo */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            // className={`text-white ${!canUndo ? "opacity-50 " : "hover:bg-slate-700"}`}
-            onClick={handleUndoClick}
-          // disabled={!canUndo || isUndoRedoOperation}
-          // title={`Undo (${undoStack.length - 1} actions available)`}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            // className={`text-white ${!canRedo ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-700"}`}
-            onClick={handleRedoClick}
-          // disabled={!canRedo || isUndoRedoOperation}
-
-          >
-            <RotateCw className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
       {/* Current Size Display */}
       <div className="bg-slate-700/30 rounded-lg p-3">

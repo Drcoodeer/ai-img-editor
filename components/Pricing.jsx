@@ -1,5 +1,5 @@
 import { useIntersectionObserver } from '@/hooks/use-landing-hooks';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useClerk, useUser } from '@clerk/nextjs';
 import React, { useState } from 'react'
 import { Button } from './ui/button';
 
@@ -49,13 +49,24 @@ const PricingCard = ({
     const [ref, isVisible] = useIntersectionObserver();
     const [isHovered, setIsHovered] = useState(false);
     const { has } = useAuth();
+    const { isSignedIn } = useUser();
+    const { redirectToSignIn } = useClerk();
 
     // Check if user has this specific plan
     const isCurrentPlan = id ? has?.({ plan: id }) : false;
 
 
     const handlePopup = async () => {
-        if (isCurrentPlan) return; // Don't open checkout for current plan
+        if (isCurrentPlan) return;
+
+        // If user is not signed in, redirect to sign up
+        if (!isSignedIn) {
+            await redirectToSignIn({
+                afterSignInUrl: window.location.href, // Return to current page after sign in
+                afterSignUpUrl: window.location.href, // Return to current page after sign up
+            });
+            return;
+        }
 
         try {
             if (window.Clerk && window.Clerk.__internal_openCheckout) {
@@ -121,7 +132,7 @@ const PricingCard = ({
 
 const PricingSection = () => {
     return (
-        <section id="pricing" className="relative z-10 py-20 px-6">
+        <section id="pricing" className="relative py-20 px-6">
             <div className="max-w-4xl mx-auto">
                 <h2 className="text-4xl font-semibold text-center mb-12">
                     <span className="bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
